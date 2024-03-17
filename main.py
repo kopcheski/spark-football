@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 import json
 import os
 
-from pyspark.sql.types import StructField, IntegerType, StringType, StructType, ArrayType
+from data import data_schema
+
+CACHED_DATA_JSON_FILE_NAME = "cached_data.json"
 
 # Initialize Spark session
 spark = SparkSession.builder \
@@ -59,103 +61,23 @@ fetch_and_cache_data.cached_data = None
 fetch_and_cache_data.previous_refresh_time = datetime.min
 
 # Check if cached data exists and is not empty
-if os.path.exists("cached_data.json") and os.stat("cached_data.json").st_size > 0:
-    with open("cached_data.json", "r") as file:
+if os.path.exists(CACHED_DATA_JSON_FILE_NAME) and os.stat(CACHED_DATA_JSON_FILE_NAME).st_size > 0:
+    with open(CACHED_DATA_JSON_FILE_NAME, "r") as file:
         fetch_and_cache_data.cached_data = json.load(file)
-        fetch_and_cache_data.previous_refresh_time = datetime.fromtimestamp(os.path.getmtime("cached_data.json"))
+        fetch_and_cache_data.previous_refresh_time = datetime.fromtimestamp(os.path.getmtime(CACHED_DATA_JSON_FILE_NAME))
 
 # Fetch and cache data
 cached_data = fetch_and_cache_data()
 
 # Save cached data to file
 if cached_data:
-    with open("cached_data.json", "w") as file:
+    with open(CACHED_DATA_JSON_FILE_NAME, "w") as file:
         json.dump(cached_data, file)
+
 
 # Convert data to Spark DataFrame (if applicable)
 if cached_data:
-    schema = StructType([
-        StructField("filters", StructType([
-            StructField("season", StringType(), nullable=True)
-        ]), nullable=True),
-        StructField("resultSet", StructType([
-            StructField("count", IntegerType(), nullable=True),
-            StructField("first", StringType(), nullable=True),
-            StructField("last", StringType(), nullable=True),
-            StructField("played", IntegerType(), nullable=True)
-        ]), nullable=True),
-        StructField("competition", StructType([
-            StructField("id", IntegerType(), nullable=True),
-            StructField("name", StringType(), nullable=True),
-            StructField("code", StringType(), nullable=True),
-            StructField("type", StringType(), nullable=True),
-            StructField("emblem", StringType(), nullable=True)
-        ]), nullable=True),
-        StructField("matches", ArrayType(StructType([
-            StructField("area", StructType([
-                StructField("id", IntegerType(), nullable=True),
-                StructField("name", StringType(), nullable=True),
-                StructField("code", StringType(), nullable=True),
-                StructField("flag", StringType(), nullable=True)
-            ]), nullable=True),
-            StructField("competition", StructType([
-                StructField("id", IntegerType(), nullable=True),
-                StructField("name", StringType(), nullable=True),
-                StructField("code", StringType(), nullable=True),
-                StructField("type", StringType(), nullable=True),
-                StructField("emblem", StringType(), nullable=True)
-            ]), nullable=True),
-            StructField("season", StructType([
-                StructField("id", IntegerType(), nullable=True),
-                StructField("startDate", StringType(), nullable=True),
-                StructField("endDate", StringType(), nullable=True),
-                StructField("currentMatchday", IntegerType(), nullable=True),
-                StructField("winner", StringType(), nullable=True)
-            ]), nullable=True),
-            StructField("id", IntegerType(), nullable=True),
-            StructField("utcDate", StringType(), nullable=True),
-            StructField("status", StringType(), nullable=True),
-            StructField("matchday", IntegerType(), nullable=True),
-            StructField("stage", StringType(), nullable=True),
-            StructField("group", StringType(), nullable=True),
-            StructField("lastUpdated", StringType(), nullable=True),
-            StructField("homeTeam", StructType([
-                StructField("id", IntegerType(), nullable=True),
-                StructField("name", StringType(), nullable=True),
-                StructField("shortName", StringType(), nullable=True),
-                StructField("tla", StringType(), nullable=True),
-                StructField("crest", StringType(), nullable=True)
-            ]), nullable=True),
-            StructField("awayTeam", StructType([
-                StructField("id", IntegerType(), nullable=True),
-                StructField("name", StringType(), nullable=True),
-                StructField("shortName", StringType(), nullable=True),
-                StructField("tla", StringType(), nullable=True),
-                StructField("crest", StringType(), nullable=True)
-            ]), nullable=True),
-            StructField("score", StructType([
-                StructField("winner", StringType(), nullable=True),
-                StructField("duration", StringType(), nullable=True),
-                StructField("fullTime", StructType([
-                    StructField("home", IntegerType(), nullable=True),
-                    StructField("away", IntegerType(), nullable=True)
-                ]), nullable=True),
-                StructField("halfTime", StructType([
-                    StructField("home", IntegerType(), nullable=True),
-                    StructField("away", IntegerType(), nullable=True)
-                ]), nullable=True)
-            ]), nullable=True),
-            StructField("odds", StructType([
-                StructField("msg", StringType(), nullable=True)
-            ]), nullable=True),
-            StructField("referees", ArrayType(StructType([
-                StructField("id", IntegerType(), nullable=True),
-                StructField("name", StringType(), nullable=True),
-                StructField("type", StringType(), nullable=True),
-                StructField("nationality", StringType(), nullable=True)
-            ])), nullable=True)
-        ])), nullable=True)
-    ])
+    schema = data_schema()
     cached_data_as_str = json.dumps(cached_data)
     df = spark.read.schema(schema).json(cached_data_as_str)
     df.show()
