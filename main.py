@@ -1,3 +1,5 @@
+import logging
+
 from pyspark.sql import SparkSession
 import requests
 from datetime import datetime, timedelta
@@ -10,11 +12,12 @@ CACHED_DATA_JSON_FILE_NAME = "cached_data.json"
 
 # Initialize Spark session
 spark = SparkSession.builder \
-    .appName("Fetch Data from Endpoint with Caching") \
+    .appName("Eredivisie data playground") \
     .getOrCreate()
 
 
 def fetch_data():
+    logging.info("Fetching online data.")
     request_url = "http://api.football-data.org/v4/competitions/DED/matches"
     headers = {'X-Auth-Token': os.environ.get("FOOTBALL_DATA_ORG_TOKEN")}
     query_params = {'dateFrom': (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
@@ -44,6 +47,7 @@ def needs_refresh(previous_refresh_time):
 def fetch_and_cache_data():
     # Check if data needs to be refreshed
     if not needs_refresh(fetch_and_cache_data.previous_refresh_time):
+        logging.info("Using cached data.")
         return fetch_and_cache_data.cached_data
 
     # Fetch new data from the endpoint
@@ -59,6 +63,7 @@ def fetch_and_cache_data():
 # Initialize cached data and previous refresh time
 fetch_and_cache_data.cached_data = None
 fetch_and_cache_data.previous_refresh_time = datetime.min
+logging.basicConfig(level=logging.INFO)
 
 # Check if cached data exists and is not empty
 if os.path.exists(CACHED_DATA_JSON_FILE_NAME) and os.stat(CACHED_DATA_JSON_FILE_NAME).st_size > 0:
