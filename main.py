@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 import json
 import os
 
+from pyspark.sql.functions import col, explode
+
 from data import data_schema
 
 CACHED_DATA_JSON_FILE_NAME = "cached_data.json"
@@ -83,7 +85,15 @@ if cached_data:
 # Convert data to Spark DataFrame (if applicable)
 if cached_data:
     df = spark.read.json(CACHED_DATA_JSON_FILE_NAME, schema=data_schema())
-    df.show(truncate=False)
+
+    # Explode the matches array to flatten it
+    exploded_df = df.select(explode("matches").alias("match"))
+
+    # Filter all results where shortName is 'PSV' in the homeTeam column
+    filtered_df = exploded_df.where((col("match.homeTeam.shortName") == "PSV") |
+                                    (col("match.awayTeam.shortName") == "PSV"))
+
+    filtered_df.show(3, truncate=False)
 
 # Stop Spark session
 spark.stop()
