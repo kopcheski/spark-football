@@ -1,11 +1,9 @@
-from pyspark.sql.types import StructField, StructType, StringType, IntegerType, ArrayType
+from pyspark.sql.types import StructField, StructType, StringType, IntegerType, ArrayType, MapType
 
 
 def data_schema():
     return StructType([
-        StructField("filters", StructType([
-            StructField("season", StringType(), nullable=True)
-        ]), nullable=True),
+        StructField("filters", MapType(StringType(), StringType()), nullable=True),
         StructField("resultSet", StructType([
             StructField("count", IntegerType(), nullable=True),
             StructField("first", StringType(), nullable=True),

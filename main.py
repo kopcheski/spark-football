@@ -77,10 +77,8 @@ if cached_data:
 
 # Convert data to Spark DataFrame (if applicable)
 if cached_data:
-    schema = data_schema()
-    cached_data_as_str = json.dumps(cached_data)
-    df = spark.read.schema(schema).json(cached_data_as_str)
-    df.show()
+    df = spark.read.json(CACHED_DATA_JSON_FILE_NAME, schema=data_schema())
+    df.show(truncate=False)
 
 # Stop Spark session
 spark.stop()
