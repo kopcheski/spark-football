@@ -84,16 +84,31 @@ if cached_data:
 
 # Convert data to Spark DataFrame (if applicable)
 if cached_data:
-    df = spark.read.json(CACHED_DATA_JSON_FILE_NAME, schema=data_schema())
+    last_12_month_matches_df = spark.read.json(CACHED_DATA_JSON_FILE_NAME, schema=data_schema())
 
     # Explode the matches array to flatten it
-    exploded_df = df.select(explode("matches").alias("match"))
+    matches_df = last_12_month_matches_df.select(explode("matches").alias("match"))
 
-    # Filter all results where shortName is 'PSV' in the homeTeam column
-    filtered_df = exploded_df.where((col("match.homeTeam.shortName") == "PSV") |
-                                    (col("match.awayTeam.shortName") == "PSV"))
+    matches_df.createOrReplaceTempView("sorted_matches")
 
-    filtered_df.show(3, truncate=False)
+    simplified_df = spark.sql(""" 
+            select
+                match.homeTeam.name as home_team,
+                match.awayTeam.name as away_team,
+                match.score.winner,
+                match.score.fullTime.home as home_scored,
+                match.score.fullTime.away as away_scored         
+            from
+                sorted_matches         
+            order by
+                home_team,
+                match.utcDate desc
+            """)
+
+    # expected df
+    # team - home_form - away_form - home_scored - home_conceded - away_scored - away_conceded
+
+    simplified_df.show(n=100, truncate=False)
 
 # Stop Spark session
 spark.stop()
