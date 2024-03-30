@@ -92,21 +92,45 @@ if cached_data:
     matches_df.createOrReplaceTempView("sorted_matches")
 
     simplified_df = spark.sql(""" 
-            select
+        select
+            home_team,
+            sum(case 
+                when all.winner = 'HOME_TEAM' then 1 
+                else 0 
+            end) as wins,
+            sum(case 
+                when all.winner = 'AWAY_TEAM' then 1 
+                else 0 
+            end) as losses,
+            sum(case 
+                when all.winner = 'DRAW' then 1 
+                else 0 
+            end) as draws,
+            sum(all.home_scored) as goals_scored,
+            sum(all.away_scored) as goals_conceded          
+        from
+            (select
                 match.homeTeam.name as home_team,
                 match.awayTeam.name as away_team,
-                match.score.winner,
+                match.score.winner as winner,
                 match.score.fullTime.home as home_scored,
-                match.score.fullTime.away as away_scored         
+                match.score.fullTime.away as away_scored                                           
             from
-                sorted_matches         
+                sorted_matches                                           
             order by
                 home_team,
-                match.utcDate desc
-            """)
+                match.utcDate desc) as all                      
+        group by
+            all.home_team                        
+        order by
+            all.home_team  
+                            """)
 
     # expected df
     # team - home_form - away_form - home_scored - home_conceded - away_scored - away_conceded
+
+#aja (fs, fcu, nec, psv, rkc)
+#fct (spa, goa, fcu, rkc, az)
 
     simplified_df.show(n=100, truncate=False)
 
