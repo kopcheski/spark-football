@@ -11,6 +11,9 @@ from pyspark.sql.functions import col, explode, row_number
 from data import data_schema
 
 CACHED_DATA_JSON_FILE_NAME = "cached_data.json"
+RECENT_FORM_IN_DAYS = 5
+DATA_AGE_IN_DAYS = 365
+DATA_RETENTION_IN_DAYS = 365
 
 # Initialize Spark session
 spark = SparkSession.builder \
@@ -22,7 +25,7 @@ def fetch_data():
     logging.info("Fetching online data.")
     request_url = "http://api.football-data.org/v4/competitions/DED/matches"
     headers = {'X-Auth-Token': os.environ.get("FOOTBALL_DATA_ORG_TOKEN")}
-    query_params = {'dateFrom': (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
+    query_params = {'dateFrom': (datetime.now() - timedelta(days=DATA_AGE_IN_DAYS)).strftime('%Y-%m-%d'),
                     'dateTo': datetime.now().strftime('%Y-%m-%d')}
 
     # Construct the request URL with query parameters if provided
@@ -42,7 +45,7 @@ def fetch_data():
 # Function to check if data needs to be refreshed
 def needs_refresh(previous_refresh_time):
     # Check if previous refresh time is at least a week old
-    return datetime.now() - previous_refresh_time >= timedelta(days=7)
+    return datetime.now() - previous_refresh_time >= timedelta(days=DATA_RETENTION_IN_DAYS)
 
 
 # Function to fetch data and cache it if necessary
@@ -93,11 +96,9 @@ if cached_data:
 
     partitioned_by_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
 
-    recent_matches_df = partitioned_by_team_df.filter(partitioned_by_team_df["row_number"] <= 5)
+    recent_matches_df = partitioned_by_team_df.filter(partitioned_by_team_df["row_number"] <= RECENT_FORM_IN_DAYS)
 
     recent_matches_df.createOrReplaceTempView("recent_matches")
-
-    recent_matches_df.show(n=100, truncate=False)
 
     recent_form_df = spark.sql(""" 
         select
@@ -115,7 +116,9 @@ if cached_data:
                 else 0 
             end) as draws,
             sum(all.home_scored) as goals_scored,
-            sum(all.away_scored) as goals_conceded          
+            sum(all.away_scored) as goals_conceded,
+            avg(all.home_scored) as avg_scored,    
+            avg(all.away_scored) as avg_conceded      
         from
             (select
                 match.homeTeam.name as home_team,
