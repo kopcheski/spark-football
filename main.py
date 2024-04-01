@@ -1,12 +1,12 @@
 import logging
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, Window
 import requests
 from datetime import datetime, timedelta
 import json
 import os
 
-from pyspark.sql.functions import col, explode
+from pyspark.sql.functions import col, explode, row_number
 
 from data import data_schema
 
@@ -89,9 +89,17 @@ if cached_data:
     # Explode the matches array to flatten it
     matches_df = last_12_month_matches_df.select(explode("matches").alias("match"))
 
-    matches_df.createOrReplaceTempView("sorted_matches")
+    window_spec = Window.partitionBy(matches_df["match.homeTeam.name"]).orderBy(matches_df["match.utcDate"])
 
-    simplified_df = spark.sql(""" 
+    partitioned_by_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
+
+    recent_matches_df = partitioned_by_team_df.filter(partitioned_by_team_df["row_number"] <= 5)
+
+    recent_matches_df.createOrReplaceTempView("recent_matches")
+
+    recent_matches_df.show(n=100, truncate=False)
+
+    recent_form_df = spark.sql(""" 
         select
             home_team,
             sum(case 
@@ -116,7 +124,7 @@ if cached_data:
                 match.score.fullTime.home as home_scored,
                 match.score.fullTime.away as away_scored                                           
             from
-                sorted_matches                                           
+                recent_matches                                           
             order by
                 home_team,
                 match.utcDate desc) as all                      
@@ -126,13 +134,15 @@ if cached_data:
             all.home_team  
                             """)
 
+    recent_form_df.show(n=100, truncate=False)
+
     # expected df
     # team - home_form - away_form - home_scored - home_conceded - away_scored - away_conceded
 
 #aja (fs, fcu, nec, psv, rkc)
 #fct (spa, goa, fcu, rkc, az)
 
-    simplified_df.show(n=100, truncate=False)
+    # simplified_df.show(n=100, truncate=False)
 
 # Stop Spark session
 spark.stop()
