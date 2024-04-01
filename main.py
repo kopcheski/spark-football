@@ -92,15 +92,15 @@ if cached_data:
     # Explode the matches array to flatten it
     matches_df = last_12_month_matches_df.select(explode("matches").alias("match"))
 
-    window_spec = Window.partitionBy(matches_df["match.homeTeam.name"]).orderBy(matches_df["match.utcDate"])
+    window_spec = Window.partitionBy(matches_df["match.homeTeam.name"]).orderBy(matches_df["match.utcDate"].desc())
 
-    partitioned_by_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
+    partitioned_by_home_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
 
-    recent_matches_df = partitioned_by_team_df.filter(partitioned_by_team_df["row_number"] <= RECENT_FORM_IN_DAYS)
+    recent_home_matches_df = partitioned_by_home_team_df.filter(col("row_number") <= RECENT_FORM_IN_DAYS)
 
-    recent_matches_df.createOrReplaceTempView("recent_matches")
+    recent_home_matches_df.createOrReplaceTempView("recent_matches")
 
-    recent_form_df = spark.sql(""" 
+    recent_home_form_df = spark.sql(""" 
         select
             home_team,
             sum(case 
@@ -137,15 +137,7 @@ if cached_data:
             all.home_team  
                             """)
 
-    recent_form_df.show(n=100, truncate=False)
-
-    # expected df
-    # team - home_form - away_form - home_scored - home_conceded - away_scored - away_conceded
-
-#aja (fs, fcu, nec, psv, rkc)
-#fct (spa, goa, fcu, rkc, az)
-
-    # simplified_df.show(n=100, truncate=False)
+    recent_home_form_df.show(n=100, truncate=False)
 
 # Stop Spark session
 spark.stop()
