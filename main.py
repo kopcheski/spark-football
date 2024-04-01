@@ -8,12 +8,12 @@ import os
 
 from pyspark.sql.functions import col, explode, row_number
 
-from data import data_schema
+from data_schema import data_schema
 
 CACHED_DATA_JSON_FILE_NAME = "cached_data.json"
 RECENT_FORM_IN_DAYS = 5
 DATA_AGE_IN_DAYS = 365
-DATA_RETENTION_IN_DAYS = 365
+DATA_RETENTION_IN_DAYS = 7
 
 # Initialize Spark session
 spark = SparkSession.builder \
