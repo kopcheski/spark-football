@@ -26,6 +26,7 @@ class Group:
         self.partition_by_column = "match.homeTeam.name" if winner == 'home' else "match.awayTeam.name"
         self.victory_column = 'HOME_TEAM' if winner == 'home' else "AWAY_TEAM"
         self.loss_column = 'AWAY_TEAM' if winner == 'home' else "HOME_TEAM"
+        self.label = 'home' if winner == 'home' else "away"
 
 
 groups = [Group('home'), Group('away')]
@@ -34,12 +35,12 @@ for group in groups:
 
     partitioned_by_home_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
 
-    recent_home_matches_df = partitioned_by_home_team_df.filter(
+    recent_matches_df = partitioned_by_home_team_df.filter(
         partitioned_by_home_team_df.row_number <= RECENT_FORM_IN_DAYS)
 
-    recent_home_matches_df.createOrReplaceTempView("recent_matches")
+    recent_matches_df.createOrReplaceTempView("recent_matches")
 
-    recent_home_form_df = spark.sql(""" 
+    recent_form_df = spark.sql(""" 
         select
             home_team,
             sum(case 
@@ -76,7 +77,9 @@ for group in groups:
             all.home_team  
                             """.format(fvictory_column=group.victory_column, floss_column=group.loss_column))
 
-    recent_home_form_df.show(n=100, truncate=False)
+    recent_form_df.createOrReplaceTempView("recent_form_{fgroup}".format(fgroup=group.label))
+
+    recent_form_df.show(n=100, truncate=False)
 
 # Stop Spark session
 spark.stop()
