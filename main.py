@@ -48,13 +48,13 @@ for group in groups:
                 else 0 
             end) as wins,
             sum(case 
-                when all.winner = '{floss_column}' then 1 
-                else 0 
-            end) as losses,
-            sum(case 
                 when all.winner = 'DRAW' then 1 
                 else 0 
             end) as draws,
+            sum(case 
+                when all.winner = '{floss_column}' then 1 
+                else 0 
+            end) as losses,
             sum(all.home_scored) as goals_scored,
             sum(all.away_scored) as goals_conceded,
             avg(all.home_scored) as avg_scored,    
@@ -84,20 +84,21 @@ for group in groups:
 recent_overall_form_df = spark.sql("""
     select
           home_team,
-          sum(wins),
-          sum(losses),
-          sum(draws),
-          sum(goals_scored),
-          sum(goals_conceded),
-          sum(avg_scored),
-          sum(avg_conceded)
+          sum(wins) as wins,
+          sum(draws) as draws,
+          sum(losses) as losses,
+          sum(goals_scored) as scored,
+          sum(goals_conceded) as conceded,
+          sum(avg_scored) as avg_scored,
+          sum(avg_conceded) as avg_conceded,
+          ((100 * wins * 3 + draws)/({matches} * 3)) as pctg
     from
           (
                 select
                       home_team,
                       wins,
-                      losses,
                       draws,
+                      losses,
                       goals_scored,
                       goals_conceded,
                       avg_scored,
@@ -110,8 +111,8 @@ recent_overall_form_df = spark.sql("""
                 select
                       home_team,
                       wins,
-                      losses,
                       draws,
+                      losses,
                       goals_scored,
                       goals_conceded,
                       avg_scored,
@@ -119,7 +120,8 @@ recent_overall_form_df = spark.sql("""
                 from
                       recent_form_away ) as recent_form
     group by
-          home_team
+          home_team, pctg
+    order by pctg DESC
     """.format(matches=RECENT_FORM_IN_DAYS))
 recent_overall_form_df.show(n=100, truncate=False)
 
