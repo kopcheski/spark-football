@@ -81,5 +81,47 @@ for group in groups:
 
     recent_form_df.show(n=100, truncate=False)
 
+recent_overall_form_df = spark.sql("""
+    select
+          home_team,
+          sum(wins),
+          sum(losses),
+          sum(draws),
+          sum(goals_scored),
+          sum(goals_conceded),
+          sum(avg_scored),
+          sum(avg_conceded)
+    from
+          (
+                select
+                      home_team,
+                      wins,
+                      losses,
+                      draws,
+                      goals_scored,
+                      goals_conceded,
+                      avg_scored,
+                      avg_conceded
+                from
+                      recent_form_home
+                
+                UNION ALL
+                
+                select
+                      home_team,
+                      wins,
+                      losses,
+                      draws,
+                      goals_scored,
+                      goals_conceded,
+                      avg_scored,
+                      avg_conceded
+                from
+                      recent_form_away ) as recent_form
+    group by
+          home_team
+    """.format(matches=RECENT_FORM_IN_DAYS))
+recent_overall_form_df.show(n=100, truncate=False)
+
 # Stop Spark session
 spark.stop()
