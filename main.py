@@ -33,10 +33,10 @@ groups = [Group('home'), Group('away')]
 for group in groups:
     window_spec = Window.partitionBy(col(group.partition_by_column)).orderBy(col("match.utcDate").desc())
 
-    partitioned_by_home_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
+    partitioned_by_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
 
-    recent_matches_df = partitioned_by_home_team_df.filter(
-        partitioned_by_home_team_df.row_number <= RECENT_FORM_IN_DAYS)
+    recent_matches_df = partitioned_by_team_df.filter(
+        partitioned_by_team_df.row_number <= RECENT_FORM_IN_DAYS)
 
     recent_matches_df.createOrReplaceTempView("recent_matches")
 
@@ -79,7 +79,7 @@ for group in groups:
 
     recent_form_df.createOrReplaceTempView("recent_form_{fgroup}".format(fgroup=group.label))
 
-    recent_form_df.show(n=100, truncate=False)
+    # recent_form_df.show(n=100, truncate=False)
 
 recent_overall_form_df = spark.sql("""
     select
@@ -123,7 +123,7 @@ recent_overall_form_df = spark.sql("""
           home_team, pctg
     order by pctg DESC
     """.format(matches=RECENT_FORM_IN_DAYS))
-recent_overall_form_df.show(n=100, truncate=False)
+# recent_overall_form_df.show(n=100, truncate=False)
 
 # Stop Spark session
 spark.stop()
