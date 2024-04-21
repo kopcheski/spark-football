@@ -22,11 +22,11 @@ matches_df = last_12_month_matches_df.select(explode("matches").alias("match"))
 
 
 class Group:
-    def __init__(self, winner):
-        self.partition_by_column = "match.homeTeam.name" if winner == 'home' else "match.awayTeam.name"
-        self.victory_column = 'HOME_TEAM' if winner == 'home' else "AWAY_TEAM"
-        self.loss_column = 'AWAY_TEAM' if winner == 'home' else "HOME_TEAM"
-        self.label = 'home' if winner == 'home' else "away"
+    def __init__(self, playing_as):
+        self.partition_by_column = "match.homeTeam.name" if playing_as == 'home' else "match.awayTeam.name"
+        self.victory_column = 'HOME_TEAM' if playing_as == 'home' else "AWAY_TEAM"
+        self.loss_column = 'AWAY_TEAM' if playing_as == 'home' else "HOME_TEAM"
+        self.label = 'home' if playing_as == 'home' else "away"
 
 
 groups = [Group('home'), Group('away')]
