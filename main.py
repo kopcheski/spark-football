@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession, Window
 
-from pyspark.sql.functions import explode, row_number, col
+from pyspark.sql.functions import explode, row_number, col, count
 
 from data_schema import data_schema
 
@@ -79,51 +79,52 @@ for group in groups:
 
     recent_form_df.createOrReplaceTempView("recent_form_{fgroup}".format(fgroup=group.label))
 
-    # recent_form_df.show(n=100, truncate=False)
+    recent_form_df.show(n=100, truncate=False)
 
 recent_overall_form_df = spark.sql("""
     select
-          home_team,
-          sum(wins) as wins,
-          sum(draws) as draws,
-          sum(losses) as losses,
-          sum(goals_scored) as scored,
-          sum(goals_conceded) as conceded,
-          sum(avg_scored) as avg_scored,
-          sum(avg_conceded) as avg_conceded,
-          ((100 * wins * 3 + draws)/({matches} * 3)) as pctg
+        home_team,
+        sum(wins) as wins,
+        sum(draws) as draws,
+        sum(losses) as losses,
+        sum(goals_scored) as scored,
+        sum(goals_conceded) as conceded,
+        sum(avg_scored) as avg_scored,
+        sum(avg_conceded) as avg_conceded,
+        ((100 * wins * 3 + draws)/({matches} * 3)) as pctg
     from
-          (
+        (
                 select
-                      home_team,
-                      wins,
-                      draws,
-                      losses,
-                      goals_scored,
-                      goals_conceded,
-                      avg_scored,
-                      avg_conceded
+                    home_team,
+                    wins,
+                    draws,
+                    losses,
+                    goals_scored,
+                    goals_conceded,
+                    avg_scored,
+                    avg_conceded
                 from
-                      recent_form_home
+                    recent_form_home
                 
                 UNION ALL
                 
                 select
-                      home_team,
-                      wins,
-                      draws,
-                      losses,
-                      goals_scored,
-                      goals_conceded,
-                      avg_scored,
-                      avg_conceded
+                    home_team,
+                    wins,
+                    draws,
+                    losses,
+                    goals_scored,
+                    goals_conceded,
+                    avg_scored,
+                    avg_conceded
                 from
-                      recent_form_away ) as recent_form
+                    recent_form_away ) as recent_form
     group by
-          home_team, pctg
+        home_team, pctg
     order by pctg DESC
     """.format(matches=RECENT_FORM_IN_DAYS))
-# recent_overall_form_df.show(n=100, truncate=False)
+
+recent_overall_form_df.show(n=100, truncate=False)
 
 # Stop Spark session
 spark.stop()
