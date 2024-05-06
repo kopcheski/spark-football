@@ -5,7 +5,7 @@ from pyspark.sql.functions import explode, row_number, col, count
 from data_schema import data_schema
 
 CACHED_DATA_JSON_FILE_NAME = "cached_data.json"
-RECENT_FORM_IN_DAYS = 5
+RECENT_FORM_IN_X_MATCHES = 5
 DATA_RETENTION_IN_DAYS = 7
 DATA_AGE_IN_DAYS = 365
 
@@ -31,12 +31,14 @@ class Group:
 
 groups = [Group('home'), Group('away')]
 for group in groups:
-    window_spec = Window.partitionBy(col(group.partition_by_column)).orderBy(col("match.utcDate").desc())
+    partition_column = col(group.partition_by_column)
+    utc_date_desc = col("match.utcDate").desc()
+    window_spec = Window.partitionBy(partition_column).orderBy(utc_date_desc)
 
     partitioned_by_team_df = matches_df.withColumn("row_number", row_number().over(window_spec))
 
     recent_matches_df = partitioned_by_team_df.filter(
-        partitioned_by_team_df.row_number <= RECENT_FORM_IN_DAYS)
+        col("row_number") <= RECENT_FORM_IN_X_MATCHES)
 
     recent_matches_df.createOrReplaceTempView("recent_matches")
 
