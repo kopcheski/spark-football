@@ -42,7 +42,7 @@ for group in groups:
 
     recent_form_df = spark.sql(""" 
         select
-            home_team,
+            {flabel_column}_team as team,
             sum(case 
                 when all.winner = '{fvictory_column}' then 1 
                 else 0 
@@ -72,10 +72,12 @@ for group in groups:
                 home_team,
                 match.utcDate desc) as all                      
         group by
-            all.home_team                        
+            all.{flabel_column}_team                        
         order by
-            all.home_team  
-                            """.format(fvictory_column=group.victory_column, floss_column=group.loss_column))
+            all.{flabel_column}_team  
+                            """.format(fvictory_column=group.victory_column,
+                                       floss_column=group.loss_column,
+                                       flabel_column=group.label))
 
     recent_form_df.createOrReplaceTempView("recent_form_{fgroup}".format(fgroup=group.label))
 
@@ -83,7 +85,7 @@ for group in groups:
 
 recent_overall_form_df = spark.sql("""
     select
-        home_team,
+        team,
         sum(wins) as wins,
         sum(draws) as draws,
         sum(losses) as losses,
@@ -95,7 +97,7 @@ recent_overall_form_df = spark.sql("""
     from
         (
                 select
-                    home_team,
+                    team,
                     wins,
                     draws,
                     losses,
@@ -109,7 +111,7 @@ recent_overall_form_df = spark.sql("""
                 UNION ALL
                 
                 select
-                    home_team,
+                    team,
                     wins,
                     draws,
                     losses,
@@ -120,9 +122,9 @@ recent_overall_form_df = spark.sql("""
                 from
                     recent_form_away ) as recent_form
     group by
-        home_team, pctg
+        team, pctg
     order by pctg DESC
-    """.format(matches=RECENT_FORM_IN_DAYS))
+    """.format(matches=RECENT_FORM_IN_X_MATCHES))
 
 recent_overall_form_df.show(n=100, truncate=False)
 
